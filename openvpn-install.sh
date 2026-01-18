@@ -498,106 +498,56 @@ else
 	#echo "   2) Revoke an existing client"
 	#echo "   3) Remove OpenVPN"
 	#echo "   4) Exit"
-    	#echo "   5) Create VPN HUB"
+    #echo "   5) Create VPN HUB"
 	#echo "   6) Add a new client in your own VPN HUB"
 	#read -p "Option: " option
 	option=$1
-	#echo "$option"
-	#until [[ "$option" =~ ^[1-6]$ ]]; do
-	#	echo "$option: invalid selection."
-		#read -p "Option: " option
-	#	option=$1
-	#done
 	case "$option" in
 		1)
-			#echo
-			#echo "Provide a name for the client:"
-			#read -p "Name: " unsanitized_client
 			unsanitized_client=$2
 			client=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_client")
 			if [[ -z "$client" || -f "/etc/openvpn/certificates/$client.ovpn" ]];then
 				echo "$client already exist please use another name or revoke the existing certificate!"
 				exit
 			fi
-			#while [[ -z "$client" || -e /etc/openvpn/server/easy-rsa/pki/issued/"$client".crt ]]; do
-			#	echo "$client: invalid name."
-			#	read -p "Name: " unsanitized_client
-			#	client=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_client")
-			#done
 			cd /etc/openvpn/server/easy-rsa/
 			./easyrsa --batch --days=3650 build-client-full "$client" nopass
-			# Generates the custom client.ovpn
 			async_new_client
 			sudo cp /etc/openvpn/certificates/"$client".ovpn /home/bhargav/Downloads/ovpn_certificates/.
-			#echo
-			#echo "$client added. Configuration available in:" /etc/openvpn/ccd/"$client.ovpn"
 			echo "Process completed Successfully!"
 			exit
 		;;
 		2)
-			# This option could be documented a bit better and maybe even be simplified
-			# ...but what can I say, I want some sleep too
 			number_of_clients=$(tail -n +2 /etc/openvpn/server/easy-rsa/pki/index.txt | grep -c "^V")
 			if [[ "$number_of_clients" = 0 ]]; then
-				#echo
 				echo "There are no existing clients!"
 				exit
 			fi
-			#echo
-			##tail -n +2 /etc/openvpn/server/easy-rsa/pki/index.txt | grep "^V" | cut -d '=' -f 2 | nl -s ') '
 			client_number=$2
-			#checking the client exists or not
 			if [[ -z "client_number" || ! -f "/etc/openvpn/certificates/$client_number.ovpn" ]]; then
 				echo "$client_number does not exist"
 				exit
 			fi
-			#read -p "Client: " client_number
-			#until [[ "$client_number" =~ ^[0-9]+$ && "$client_number" -le "$number_of_clients" ]]; do
-			#	echo "$client_number: invalid selection."
-			#	read -p "Client: " client_number
-			#done
 			client=$(tail -n +2 /etc/openvpn/server/easy-rsa/pki/index.txt | grep "^V" | cut -d '=' -f 2 | sed -n "$client_number"p)
-			#echo
-			#read -p "Confirm $client revocation? [y/N]: " revoke
-			#until [[ "$revoke" =~ ^[yYnN]*$ ]]; do
-			#	echo "$revoke: invalid selection."
-			#	read -p "Confirm $client revocation? [y/N]: " revoke
-			#done
-			#if [[ "$revoke" =~ ^[yY]$ ]]; then
 			cd /etc/openvpn/server/easy-rsa/
 			./easyrsa --batch revoke "$client_number"
 			./easyrsa --batch --days=3650 gen-crl
 			rm -f /etc/openvpn/server/crl.pem
 			rm -f /etc/openvpn/certificates/"$client_number".ovpn
 			cp /etc/openvpn/server/easy-rsa/pki/crl.pem /etc/openvpn/server/crl.pem
-			# CRL is read with each client connection, when OpenVPN is dropped to nobody
 			chown nobody:"$group_name" /etc/openvpn/server/crl.pem
 			rm -f /etc/openvpn/server/pki/reqs/"$client_number".req
 			rm -f /etc/openvpn/server/pki/private/"$client_number".key
 			rm -f /etc/openvpn/server/pki/issued/"$client_number".crt
-			#rm -f /home/bhargav/Downloads/ovpn_certificates/"$client_number".ovpn
-			#echo
-			
 			echo "$client revoked!"
-			#else
-			#	echo
-			#	echo "$client revocation aborted!"
-			#fi
 			exit
 		;;
 		3)
 			echo
-			#read -p "Confirm OpenVPN removal? [y/N]: " remove
-			#until [[ "$remove" =~ ^[yYnN]*$ ]]; do
-			#	echo "$remove: invalid selection."
-			#	read -p "Confirm OpenVPN removal? [y/N]: " remove
-			#done
-			#if [[ "$remove" =~ ^[yY]$ ]]; then
 			port=$(grep '^port ' /etc/openvpn/server/server.conf | cut -d " " -f 2)
 			protocol=$(grep '^proto ' /etc/openvpn/server/server.conf | cut -d " " -f 2)
 			if systemctl is-active --quiet firewalld.service; then
 				ip=$(firewall-cmd --direct --get-rules ipv4 nat POSTROUTING | grep '\-s 10.8.0.0/24 '"'"'!'"'"' -d 10.8.0.0/24' | grep -oE '[^ ]+$')
-				# Using both permanent and not permanent rules to avoid a firewalld reload.
 				firewall-cmd --remove-port="$port"/"$protocol"
 				firewall-cmd --zone=trusted --remove-source=10.8.0.0/24
 				firewall-cmd --permanent --remove-port="$port"/"$protocol"
@@ -625,80 +575,35 @@ else
 				rm -rf /etc/openvpn/server
 				apt-get remove --purge -y openvpn
 			else
-				# Else, OS must be CentOS or Fedora
 				yum remove -y openvpn
 				rm -rf /etc/openvpn/server
 			fi
 			echo
 			echo "OpenVPN removed!"
-			#else
-			#	echo
-			#	echo "OpenVPN removal aborted!"
-			#fi
 			exit
 		;;
 		4)
 			exit
 		;;
-                5)
-            		#echo
-	    		#echo "Provide a name for Your Hub:"
-	    		#read -p "Name of Your Hub: " unsanitized_Hub
-	    		unsanitized_Hub=$2
-	    		VPN_HUB=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_Hub")
-	    		#while [[ -z "$VPN_HUB" || -e /etc/openvpn/hub_clients/"$VPN_HUB" ]]; do
-				#echo "$VPN_HUB: invalid Hub Name."
-				#read -p "Name of Your Hub: " unsanitized_Hub
-				#VPN_HUB=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_Hub")
-			#done
-			#echo "Provide Your Number to create a pool(<100):"
-            		#read -p "range is:" range
-            		range=$3
-                        #while [[ "$range" -ge 101 || "$range" -le 0 ]]; do
-                        	#if [[ "$range" =~ ^[0-9]+$ ]]; then
-                    		#	echo "Provide Number grater than 0 and less than 101"
-                    		#	echo "please enter the range again:"
-                    		#	read -p "range is:" range
-	                        #else
-                            #		echo "please enter a valid number"
-                        	#fi
-                        #done
+		5)
+			unsanitized_Hub=$2
+			VPN_HUB=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_Hub")
+			range=$3
 			VPN_HUB=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_Hub")
 			new_pool
 			echo
-			#echo "$VPN_HUB added. Configuration available in:" /etc/openvpn/hub_clients/"$VPN_HUB"
 			echo "VPN HUB is created!"
-			exit
+		exit
 		;;
-        	6)
-            		#echo
-			#echo "Provide a name of Your Hub:"
-			#read -p "Name: " unsanitized_Hub
+		6)
 			unsanitized_Hub=$2
 			HUB=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_Hub")
-                        #while [[ ! -e /etc/openvpn/hub_clients/"$HUB" ]]; do
-				#echo "$HUB: invalid Hub name."
-				#echo "Provide another name for Your HUB"
-				#read -p "Name: " unsanitized_Hub
-				#HUB=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_Hub")
-			#done
-            		#echo "Provide a name for the client:"
-			#read -p "Name: " unsanitized_client
 			unsanitized_client=$3
 			client_name=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_client")
-			#while [[ -z "$client_name" || -e /etc/openvpn/server/easy-rsa/pki/issued/"$client_name".crt ]]; do
-				#echo "$client_name: invalid name."
-				#read -p "Name: " unsanitized_client
-				#client_name=$(sed 's/[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_/g' <<< "$unsanitized_client")
-			#done
-			# cd /etc/openvpn/server/easy-rsa/
-			# ./easyrsa --batch --days=3650 build-client-full "$client_name" nopass
-			# Generates the custom client.ovpn
 			new_hub_client
 			echo
 			echo "New client $client_name added to Your Hub $HUB"
-			#echo "$client_name added. Configuration available in:" /etc/openvpn/ccd/"$client_name.ovpn"
 			exit
-                ;;
+		;;
 	esac
 fi
