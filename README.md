@@ -23,7 +23,14 @@ Example command is
 **sh +x openvpn-install.sh 1 Username**
         (file_name)   (process number)  (name of the user)
 
-
+**About openvpn-install.sh**
+  This file is used to Install Openvpn
+  At the time of installing it is going to ask some pre-requirements to run for the project
+  After Installing the openvpn, it's going to create an .ovpn certificate to the usage private network
+  In this script we did some modifications to take the requirements like username for the certificate through command line only
+  Upon Taking it is going to call one function which handles the creation of ovpn certificate
+  If we want to create HUB or add client in a HUB we are going to the requirements (inputs) as mentioned above
+  
 **About Scripts(python):-**
 
   Here, we used some python scripts to generate a static ip for a user
