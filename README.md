@@ -40,3 +40,8 @@ Example command is
   There will be ccd directory which will be helpful to the server to hold or take the static ip mentioned in that directory with  
    the  username  ( if user1 is username then file name is also user1 [withoutextensions] and ifconfig-push ip netmask)
   And these certificates will be created in a specific path mentioned in the openvpn-install.sh file.
+
+
+Above Whole process of installing, creating and revoking OpenVPN and .ovpn certificates are done in Ubuntu(Linux) installed system.
+While taking the script only take if the script supports for Windows os.
+And the Paths also will be different for Windows system.
