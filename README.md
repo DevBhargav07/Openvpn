@@ -45,3 +45,7 @@ Example command is
 Above Whole process of installing, creating and revoking OpenVPN and .ovpn certificates are done in Ubuntu(Linux) installed system.
 While taking the script only take if the script supports for Windows os.
 And the Paths also will be different for Windows system.
+
+A Linux system path will be located at
+/etc/openvpn/..
+Here you can find the folders and files which are related to the openvpn
